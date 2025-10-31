@@ -1,5 +1,6 @@
 import reflex as rx
 from app.state import AppState, Message
+from app.components.modal import about_modal
 
 
 def mode_button(mode: str) -> rx.Component:
@@ -98,7 +99,12 @@ def chat_interface() -> rx.Component:
                 reset_on_submit=True,
                 class_name="flex items-center gap-2 p-4",
             ),
-            rx.el.p("ABOUT", class_name="text-center text-xs text-gray-400 pb-4"),
+            about_modal(),
+            rx.el.p(
+                "ABOUT",
+                class_name="text-center text-xs text-gray-400 pb-4 cursor-pointer",
+                on_click=AppState.toggle_about_modal,
+            ),
         ),
         class_name="flex flex-col h-full w-full",
     )
