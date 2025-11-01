@@ -78,23 +78,11 @@ class SupabaseState(rx.State):
                 ).execute()
             except Exception as e:
                 logging.exception(f"Error inserting scheduled scraper: {e}")
-        payload = {
-            "url": app_state.scrape_url,
-            "schedule": app_state.scrape_schedule,
-            "criteria": app_state.scrape_criteria,
-            "monitoring": app_state.scrape_monitoring,
-        }
-        webhook_url = "https://n8n-cojournalist.onrender.com/webhook/lipsum"
         try:
-            response = requests.post(webhook_url, json=payload, timeout=15)
-            response.raise_for_status()
-            response_data = response.json()
             scraped_data = {
                 "success": True,
-                "title": response_data.get("title", "Scrape Result"),
-                "preview": response_data.get(
-                    "preview", "The webhook returned a response."
-                ),
+                "title": f"Scrape Planned for {app_state.scrape_url}",
+                "preview": "This scrape has been saved to your active jobs. The N8N workflow was not triggered.",
                 "url": app_state.scrape_url,
                 "error": None,
             }
@@ -111,18 +99,18 @@ class SupabaseState(rx.State):
                 app_state.chat_histories["SCRAPE"].append(
                     {
                         "role": "assistant",
-                        "content": "Scrape successful. Please review the result. You can now use the chat to proceed.",
+                        "content": "Scrape job saved. You can view it in the 'Active Jobs' tab. You can now use the chat to proceed.",
                         "image": None,
                         "source": None,
                     }
                 )
-        except requests.exceptions.RequestException as e:
-            logging.exception(f"Error calling N8N webhook: {e}")
+        except Exception as e:
+            logging.exception(f"Error creating mock scrape data: {e}")
             async with app_state:
                 app_state.chat_histories["SCRAPE"].append(
                     {
                         "role": "assistant",
-                        "content": f"Failed to trigger scrape workflow. Error: {str(e)}",
+                        "content": f"Failed to create scrape job. Error: {str(e)}",
                         "image": None,
                         "source": "System Error",
                     }
@@ -130,3 +118,47 @@ class SupabaseState(rx.State):
         finally:
             async with app_state:
                 app_state.is_loading = False
+
+    @rx.event
+    async def fetch_scrapers(self):
+        app_state = await self.get_state(AppState)
+        clerk_user_state = await self.get_state(clerk.ClerkUser)
+        if not clerk_user_state.is_hydrated or not clerk_user_state.user_id:
+            app_state.scheduled_scrapers = []
+            return
+        client = self._get_client()
+        try:
+            user_data = (
+                client.table("users")
+                .select("id")
+                .eq("clerk_id", clerk_user_state.user_id)
+                .single()
+                .execute()
+            )
+            user_id = user_data.data.get("id")
+            if not user_id:
+                app_state.scheduled_scrapers = []
+                return
+            scrapers_data = (
+                client.table("scheduled_scrapers")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            app_state.scheduled_scrapers = scrapers_data.data
+        except Exception as e:
+            logging.exception(f"Error fetching scrapers from Supabase: {e}")
+            app_state.scheduled_scrapers = []
+
+    @rx.event(background=True)
+    async def delete_scraper(self, scraper_id: int):
+        async with self:
+            client = self._get_client()
+            try:
+                client.table("scheduled_scrapers").delete().eq(
+                    "id", scraper_id
+                ).execute()
+            except Exception as e:
+                logging.exception(f"Error deleting scraper from Supabase: {e}")
+        yield SupabaseState.fetch_scrapers

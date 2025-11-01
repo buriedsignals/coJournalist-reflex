@@ -40,6 +40,7 @@ class AppState(rx.State):
     scrape_monitoring: str = "EMAIL"
     scraped_data: ScrapeResult | None = None
     show_about_modal: bool = False
+    scheduled_scrapers: list[dict] = []
     hf_space_urls: dict[Mode, str] = {
         "GRAPHICS": "https://huggingface.co/spaces/coJournalist/cojournalist-graphics",
         "INVESTIGATE": "https://huggingface.co/spaces/coJournalist/cojournalist-investigate",
@@ -146,7 +147,7 @@ class AppState(rx.State):
         from app.states.supabase_state import SupabaseState
 
         supabase_state = await self.get_state(SupabaseState)
-        yield supabase_state.handle_scrape
+        return supabase_state.handle_scrape
 
     async def _dummy_response(self, question: str, system_prompt: str):
         from langchain_huggingface import HuggingFaceEndpoint
