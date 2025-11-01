@@ -1,4 +1,5 @@
 import reflex as rx
+import reflex_clerk_api as clerk
 from typing import Literal, TypedDict, cast
 import os
 import logging
@@ -45,6 +46,13 @@ class AppState(rx.State):
         "DATA": "https://huggingface.co/spaces/coJournalist/cojournalist-data",
         "SCRAPE": "",
     }
+
+    @rx.var
+    async def is_paid_user(self) -> bool:
+        clerk_user = await self.get_state(clerk.ClerkUser)
+        if not clerk_user.email_address:
+            return False
+        return clerk_user.public_metadata.get("paid", False).to(bool)
 
     @rx.var
     def chat_disabled(self) -> bool:

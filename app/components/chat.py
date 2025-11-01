@@ -61,18 +61,6 @@ def chat_interface() -> rx.Component:
                 class_name="flex-1",
             ),
             rx.el.div(rx.foreach(AppState.modes, mode_button), class_name="flex gap-2"),
-            rx.el.div(
-                rx.el.a(
-                    rx.icon("share", class_name="w-4 h-4 mr-2"),
-                    "Open Space",
-                    href=AppState.hf_space_urls[AppState.active_mode],
-                    target="_blank",
-                    class_name="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50",
-                ),
-                class_name=rx.cond(
-                    AppState.active_mode != "SCRAPE", "absolute right-6 top-6", "hidden"
-                ),
-            ),
             class_name="relative flex flex-col items-center justify-center text-center gap-8 py-12",
         ),
         rx.el.div(
@@ -100,10 +88,21 @@ def chat_interface() -> rx.Component:
                 class_name="flex items-center gap-2 p-4",
             ),
             about_modal(),
-            rx.el.p(
-                "ABOUT",
-                class_name="text-center text-xs text-gray-400 pb-4 cursor-pointer",
-                on_click=AppState.toggle_about_modal,
+            rx.el.div(
+                rx.el.p(
+                    "ABOUT",
+                    class_name="text-xs text-gray-400 cursor-pointer hover:underline",
+                    on_click=AppState.toggle_about_modal,
+                ),
+                rx.el.a(
+                    rx.el.img(src="placeholder.svg", class_name="w-5 h-5"),
+                    href=AppState.hf_space_urls[AppState.active_mode],
+                    is_external=True,
+                    class_name=rx.cond(
+                        AppState.active_mode != "SCRAPE", "block", "hidden"
+                    ),
+                ),
+                class_name="flex items-center justify-end gap-4 px-4 pb-4",
             ),
         ),
         class_name="flex flex-col h-full w-full",
