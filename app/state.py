@@ -90,7 +90,11 @@ class AppState(rx.State):
 
     @rx.event
     def set_scrape_sidebar_tab(self, tab: str):
+        from app.states.supabase_state import SupabaseState
+
         self.active_scrape_sidebar_tab = tab
+        if tab == "Active Jobs":
+            return SupabaseState.fetch_scrapers
 
     @rx.event
     def toggle_about_modal(self):

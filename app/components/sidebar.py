@@ -124,7 +124,6 @@ def _active_jobs() -> rx.Component:
             rx.el.p("No active jobs.", class_name="text-gray-500"),
         ),
         class_name="p-8",
-        on_mount=SupabaseState.fetch_scrapers,
     )
 
 
