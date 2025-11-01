@@ -146,8 +146,7 @@ class AppState(rx.State):
     async def handle_scrape(self):
         from app.states.supabase_state import SupabaseState
 
-        supabase_state = await self.get_state(SupabaseState)
-        return supabase_state.handle_scrape
+        return SupabaseState.handle_scrape
 
     async def _dummy_response(self, question: str, system_prompt: str):
         from langchain_huggingface import HuggingFaceEndpoint
