@@ -21,21 +21,22 @@ class SupabaseState(rx.State):
 
     @rx.event
     async def create_user_on_login(self):
-        clerk_user_state = await self.get_state(clerk.ClerkUser)
-        if not clerk_user_state.is_hydrated or not clerk_user_state.user_id:
+        clerk_state = await self.get_state(clerk.ClerkState)
+        if not clerk_state.is_hydrated or not clerk_state.user_id:
             return
+        clerk_user_state = await self.get_state(clerk.ClerkUser)
         client = self._get_client()
         try:
             user_data = (
                 client.table("users")
                 .select("id")
-                .eq("clerk_id", clerk_user_state.user_id)
+                .eq("clerk_id", clerk_state.user_id)
                 .execute()
             )
             if not user_data.data:
                 client.table("users").insert(
                     {
-                        "clerk_id": clerk_user_state.user_id,
+                        "clerk_id": clerk_state.user_id,
                         "email": clerk_user_state.email_address,
                     }
                 ).execute()
@@ -51,14 +52,14 @@ class SupabaseState(rx.State):
             app_state.is_loading = True
             app_state.scraped_data = None
             app_state.chat_histories[app_state.active_mode] = []
-            clerk_user_state = await self.get_state(clerk.ClerkUser)
+            clerk_state = await self.get_state(clerk.ClerkState)
             client = self._get_client()
             user_id = None
             try:
                 user_data = (
                     client.table("users")
                     .select("id")
-                    .eq("clerk_id", clerk_user_state.user_id)
+                    .eq("clerk_id", clerk_state.user_id)
                     .single()
                     .execute()
                 )
@@ -122,8 +123,8 @@ class SupabaseState(rx.State):
     @rx.event
     async def fetch_scrapers(self):
         app_state = await self.get_state(AppState)
-        clerk_user_state = await self.get_state(clerk.ClerkUser)
-        if not clerk_user_state.is_hydrated or not clerk_user_state.user_id:
+        clerk_state = await self.get_state(clerk.ClerkState)
+        if not clerk_state.is_hydrated or not clerk_state.user_id:
             app_state.scheduled_scrapers = []
             return
         client = self._get_client()
@@ -131,7 +132,7 @@ class SupabaseState(rx.State):
             user_data = (
                 client.table("users")
                 .select("id")
-                .eq("clerk_id", clerk_user_state.user_id)
+                .eq("clerk_id", clerk_state.user_id)
                 .single()
                 .execute()
             )
