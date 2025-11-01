@@ -156,7 +156,7 @@ class AppState(rx.State):
         repo_id = "mistralai/Mistral-7B-Instruct-v0.2"
         llm = HuggingFaceEndpoint(
             repo_id=repo_id,
-            max_length=128,
+            max_new_tokens=128,
             temperature=0.7,
             huggingfacehub_api_token=os.environ.get("HUGGINGFACE_API_KEY"),
         )
@@ -223,7 +223,7 @@ class AppState(rx.State):
                 self.chat_histories[self.active_mode].append(
                     {
                         "role": "assistant",
-                        "content": f"The associated Hugging Face space is not available at the moment. Error: {e}",
+                        "content": f"The Hugging Face space for this mode is currently unavailable. This might be due to setup or maintenance. Please try again later.",
                         "image": None,
                         "source": "API Error",
                     }
