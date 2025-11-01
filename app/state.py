@@ -141,69 +141,12 @@ class AppState(rx.State):
             async with self:
                 self.is_loading = False
 
-    @rx.event(background=True)
+    @rx.event
     async def handle_scrape(self):
-        import requests
-        import json
+        from app.states.supabase_state import SupabaseState
 
-        async with self:
-            if not self.scrape_url:
-                return
-            self.is_loading = True
-            self.scraped_data = None
-            self.chat_histories[self.active_mode] = []
-        payload = {
-            "url": self.scrape_url,
-            "schedule": self.scrape_schedule,
-            "criteria": self.scrape_criteria,
-            "monitoring": self.scrape_monitoring,
-        }
-        webhook_url = "https://n8n-cojournalist.onrender.com/webhook/lipsum"
-        try:
-            response = requests.post(webhook_url, json=payload, timeout=15)
-            response.raise_for_status()
-            response_data = response.json()
-            scraped_data = {
-                "success": True,
-                "title": response_data.get("title", "Scrape Result"),
-                "preview": response_data.get(
-                    "preview", "The webhook returned a response."
-                ),
-                "url": self.scrape_url,
-                "error": None,
-            }
-            async with self:
-                self.scraped_data = cast(ScrapeResult, scraped_data)
-                self.chat_histories["SCRAPE"].append(
-                    {
-                        "role": "assistant",
-                        "content": self.scraped_data["title"],
-                        "image": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                        "source": self.scraped_data["url"],
-                    }
-                )
-                self.chat_histories["SCRAPE"].append(
-                    {
-                        "role": "assistant",
-                        "content": "Scrape successful. Please review the result. You can now use the chat to proceed.",
-                        "image": None,
-                        "source": None,
-                    }
-                )
-        except requests.exceptions.RequestException as e:
-            logging.exception(f"Error calling N8N webhook: {e}")
-            async with self:
-                self.chat_histories["SCRAPE"].append(
-                    {
-                        "role": "assistant",
-                        "content": f"Failed to trigger scrape workflow. Error: {str(e)}",
-                        "image": None,
-                        "source": "System Error",
-                    }
-                )
-        finally:
-            async with self:
-                self.is_loading = False
+        supabase_state = await self.get_state(SupabaseState)
+        yield supabase_state.handle_scrape
 
     async def _dummy_response(self, question: str, system_prompt: str):
         from langchain_huggingface import HuggingFaceEndpoint
