@@ -60,10 +60,10 @@ class SupabaseState(rx.State):
                     client.table("users")
                     .select("id")
                     .eq("clerk_id", clerk_state.user_id)
-                    .single()
+                    .maybe_single()
                     .execute()
                 )
-                user_id = user_data.data.get("id")
+                user_id = user_data.data.get("id") if user_data.data else None
             except Exception as e:
                 logging.exception(f"Error fetching user from Supabase: {e}")
         if user_id and app_state.scrape_schedule:
@@ -133,10 +133,10 @@ class SupabaseState(rx.State):
                 client.table("users")
                 .select("id")
                 .eq("clerk_id", clerk_state.user_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
-            user_id = user_data.data.get("id")
+            user_id = user_data.data.get("id") if user_data.data else None
             if not user_id:
                 app_state.scheduled_scrapers = []
                 return
