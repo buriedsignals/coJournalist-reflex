@@ -31,7 +31,8 @@ User manually selects mode via UI buttons - no AI routing.
 
 ### Tasks:
 - [x] Create left sidebar that appears when SCRAPE mode is active
-- [x] Build form fields: URL input, SCHEDULE input, CRITERIA textarea, MONITORING dropdown
+- [x] Build form fields: URL input, CRITERIA textarea, MONITORING dropdown
+- [x] Remove SCHEDULE field (not needed per user requirements)
 - [x] Implement state management for scrape configuration
 - [x] Add Python scraping logic using requests/BeautifulSoup
 - [x] Create event handler to process scraping requests
@@ -78,6 +79,18 @@ User manually selects mode via UI buttons - no AI routing.
 - [x] Add user-friendly error messages when Spaces aren't configured
 - [x] Test all modes to ensure no backend crashes
 - [x] Verify system prompts are loaded correctly from JSON files
+- [x] Fix Supabase PGRST116 errors by replacing .single() with .execute()
+- [x] Update create_user_on_login() to handle empty query results
+- [x] Update handle_scrape() to handle missing user_id gracefully
+- [x] Update fetch_scrapers() to handle empty query results
+- [x] Test all Supabase queries to ensure no exceptions on empty results
+- [x] Fix scheduled_scrapers insert to match actual database schema
+- [x] Use 'url' field value for 'name' column (temporary mapping)
+- [x] Add 'criteria' field to scraper inserts (TEXT column in schema)
+- [x] Convert 'monitoring' dropdown to boolean value
+- [x] Set default 'regularity' (weekly) and 'day_number' (1) values
+- [x] Remove schedule field from UI and state
+- [x] Update Active Jobs display to show name (URL) and criteria
 
 ---
 
@@ -162,3 +175,52 @@ JSON structure:
 - Graceful degradation when Spaces aren't configured
 
 **Status**: All backend errors resolved. App runs without crashes. Ready for Space deployment when HF Spaces are configured with proper `/chat` API endpoints.
+
+## Supabase Query Fix Summary ✅
+**Problem**: PGRST116 error - "Cannot coerce the result to a single JSON object" when querying users table
+- `.single().execute()` throws exception when 0 rows returned
+- Caused crashes in create_user_on_login(), handle_scrape(), and fetch_scrapers()
+
+**Solution**:
+- Replaced all `.single().execute()` calls with `.execute()`
+- Added safe list checking: `user_id = result.data[0].get("id") if result.data else None`
+- Empty queries now return `[]` instead of throwing exceptions
+- All methods handle missing users gracefully without crashes
+
+**Affected methods**:
+- ✅ `create_user_on_login()` - Checks if user exists before inserting
+- ✅ `handle_scrape()` - Handles missing user_id gracefully
+- ✅ `fetch_scrapers()` - Returns empty list when user not found
+
+**Status**: All Supabase errors resolved. App handles new users and missing data gracefully.
+
+## Database Schema Alignment Fix ✅
+**Problem**: scheduled_scrapers insert failing due to schema mismatch
+- Code tried to insert non-existent columns: `url`, `schedule`
+- Missing required columns: `name`, `criteria`, `regularity`, `day_number`
+- Wrong data type for `monitoring` (string vs boolean)
+
+**Solution**:
+- ✅ Use `scrape_url` value for `name` column (temporary until re-mapping)
+- ✅ Add `criteria` field to scraper inserts (TEXT column exists in schema)
+- ✅ Convert `monitoring` dropdown value ("EMAIL"/"SMS"/"WEBHOOK") to boolean (True when not empty)
+- ✅ Set default values: `regularity="weekly"`, `day_number=1` (Monday)
+- ✅ Remove `schedule` field from UI and state entirely
+- ✅ Update Active Jobs display to show `name` (URL) and `criteria`
+- ✅ Update delete button to work with correct scraper ID
+
+**Database Schema Reference**:
+```sql
+CREATE TABLE scheduled_scrapers (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,        -- Using URL value here
+  criteria TEXT,                      -- New field added
+  monitoring BOOLEAN NOT NULL,        -- Converted from string
+  regularity regularity_type NOT NULL, -- 'weekly' or 'monthly'
+  day_number SMALLINT NOT NULL,       -- 1-7 for weekly, 1-31 for monthly
+  created_at TIMESTAMPTZ NOT NULL
+);
+```
+
+**Status**: Database inserts now work correctly. Active Jobs tab displays saved scrapers with proper data.
