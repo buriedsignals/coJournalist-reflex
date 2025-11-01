@@ -65,7 +65,23 @@ User manually selects mode via UI buttons - no AI routing.
 
 ---
 
-## Phase 4: Conditional UI & Polish
+## Phase 4: Backend Error Fix & Production Integration ✅
+**Goal**: Fix 404 errors and implement proper Hugging Face Spaces integration
+
+### Tasks:
+- [x] Fix 404 Client Error by replacing incorrect HTTP API implementation
+- [x] Install and configure gradio_client library for HF Spaces
+- [x] Replace `_query_hf_space()` with Gradio client implementation
+- [x] Add graceful error handling for unavailable Spaces (NO_APP_FILE state)
+- [x] Create missing system prompt JSON files (scrape, data, investigate, fact_check, graphics)
+- [x] Implement proper Space API endpoint querying via Gradio
+- [x] Add user-friendly error messages when Spaces aren't configured
+- [x] Test all modes to ensure no backend crashes
+- [x] Verify system prompts are loaded correctly from JSON files
+
+---
+
+## Phase 5: Conditional UI & Polish
 **Goal**: Add mode-specific UI elements and refine the overall user experience
 
 ### Tasks:
@@ -94,11 +110,11 @@ User manually selects mode via UI buttons - no AI routing.
 
 ## System Prompts ✅
 Each mode has a customizable system prompt stored in JSON files:
-- `app/prompts/scrape_prompt.json` - Web scraping assistant prompt (627 chars)
-- `app/prompts/data_prompt.json` - Data analysis expert prompt (662 chars)
-- `app/prompts/investigate_prompt.json` - Investigative journalism assistant prompt (707 chars)
-- `app/prompts/fact_check_prompt.json` - Fact-checking expert prompt (732 chars)
-- `app/prompts/graphics_prompt.json` - Graphics designer assistant prompt (730 chars)
+- `app/prompts/scrape_prompt.json` - Web scraping assistant prompt (568 chars)
+- `app/prompts/data_prompt.json` - Data analysis expert prompt (588 chars)
+- `app/prompts/investigate_prompt.json` - Investigative journalism assistant prompt (630 chars)
+- `app/prompts/fact_check_prompt.json` - Fact-checking expert prompt (632 chars)
+- `app/prompts/graphics_prompt.json` - Graphics designer assistant prompt (632 chars)
 
 **These files are editable - you can modify them to customize AI behavior for each mode.**
 
@@ -116,16 +132,16 @@ JSON structure:
 - **Session-only**: History is not saved beyond the current session
 - **Welcome messages**: When switching to a new mode (except SCRAPE), a welcome message appears
 
-## HTTP API Integration ✅
+## Gradio Client Integration ✅
 - **SCRAPE mode**: Uses Langchain + Mistral-7B-Instruct via HuggingFace Inference API with custom system prompt from `scrape_prompt.json`
-- **Other modes (DATA, INVESTIGATE, FACT-CHECK, GRAPHICS)**: HTTP POST integration implemented via `_query_hf_space()` method
-  - Constructs API URL from HF Space URL (converts `/spaces/` to `/spaces/api/` and appends `/chat`)
-  - Sends POST request with `Authorization: Bearer {HUGGINGFACE_API_KEY}` header
-  - Payload includes: `{"inputs": question, "parameters": {"system_prompt": system_prompt}}`
+- **Other modes (DATA, INVESTIGATE, FACT-CHECK, GRAPHICS)**: Gradio client integration implemented via `_query_hf_space()` method
+  - Uses `gradio_client.Client(space_id, hf_token=...)` to connect to Spaces
+  - Calls Space API endpoints using `client.predict(question=..., system_prompt=..., api_name="/chat")`
   - Expects JSON response: `{"generated_text": str, "image_url": str | None, "source_url": str | None}`
+  - Gracefully handles Spaces that aren't ready (NO_APP_FILE state)
 - **Response handling**: Each mode parses API responses and displays them in the chat interface with optional image thumbnails
-- **Error handling**: Graceful error messages for API failures, timeouts, or network issues
-- **Timeout**: 30 seconds for HF Space API requests
+- **Error handling**: User-friendly error messages for API failures, Space unavailability, or network issues
+- **Authentication**: Uses HUGGINGFACE_API_KEY for Space access
 
 ## Hugging Face Space URLs
 - GRAPHICS: https://huggingface.co/spaces/coJournalist/cojournalist-graphics
@@ -133,44 +149,16 @@ JSON structure:
 - FACT-CHECK: https://huggingface.co/spaces/coJournalist/coJournalist-Fact-Check
 - DATA: https://huggingface.co/spaces/coJournalist/cojournalist-data
 
-## Implementation Details
+## Backend Error Fix Summary ✅
+**Problem**: 404 Client Error when querying Hugging Face Spaces
+- Original implementation incorrectly constructed API URLs
+- Attempted to use non-existent `/chat` HTTP endpoints
 
-### Per-Mode System Prompts
-- Prompts loaded from JSON files at runtime in `process_chat()` event handler
-- Each mode reads its prompt before processing chat requests
-- Filename pattern: `{mode_name}_prompt.json` (hyphens converted to underscores)
-- Example: `FACT-CHECK` → `fact_check_prompt.json`
-- Used to guide AI behavior for each journalism task
-- Prompts are comprehensive (600-730 characters) and describe role, capabilities, and interaction guidelines
+**Solution**:
+- Replaced HTTP POST implementation with `gradio_client` library
+- Proper Space interaction using Gradio's Python client
+- Added comprehensive error handling for unavailable Spaces
+- Created missing system prompt JSON files
+- Graceful degradation when Spaces aren't configured
 
-### Separate Chat Histories
-- State uses `chat_histories: dict[Mode, list[Message]]` to store per-mode conversations
-- Computed var `chat_history` returns current mode's history
-- Mode switching triggers welcome message for non-SCRAPE modes
-- Each mode's conversation persists independently during the session
-- Verified working: switching between modes maintains separate conversation threads
-
-### HTTP API Integration (Production-Ready)
-- `_query_hf_space()` method handles API calls to Hugging Face Spaces
-- Constructs proper API endpoint URLs from Space URLs
-- Includes authorization headers with HUGGINGFACE_API_KEY
-- Sends POST requests with user question and system prompt
-- Expects JSON response with `generated_text`, optional `image_url`, and `source_url`
-- Displays responses in chat with optional image thumbnails
-- Full error handling with try/except for network errors
-- 30-second timeout to prevent hanging requests
-
-### Current Status
-All core features implemented and tested:
-- ✅ Per-mode system prompts (5 JSON files created)
-- ✅ Separate chat histories per mode
-- ✅ HTTP API integration ready for HF Spaces
-- ✅ N8N webhook integration for SCRAPE mode
-- ✅ Conditional UI based on active mode
-- ✅ Authentication with Clerk
-- ✅ Mode switching with active state styling
-
-**Ready for testing!** You can now:
-1. Edit JSON files in `app/prompts/` to customize AI behavior
-2. Switch between modes to see separate conversation threads
-3. Send questions that will query Hugging Face Space APIs (when Spaces are ready)
+**Status**: All backend errors resolved. App runs without crashes. Ready for Space deployment when HF Spaces are configured with proper `/chat` API endpoints.

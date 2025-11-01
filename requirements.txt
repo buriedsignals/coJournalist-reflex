@@ -7,3 +7,5 @@ requests
 langchain
 langchain-huggingface
 supabase
+gradio_client
+gradio-client

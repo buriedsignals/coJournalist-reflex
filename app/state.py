@@ -237,27 +237,31 @@ class AppState(rx.State):
             )
 
     async def _query_hf_space(self, question: str, system_prompt: str):
-        import requests
+        from gradio_client import Client
+        import json
 
-        api_url = self.hf_space_urls.get(self.active_mode)
-        if not api_url or not api_url.startswith("https://huggingface.co/spaces/"):
+        space_url = self.hf_space_urls.get(self.active_mode)
+        if not space_url or not space_url.startswith("https://huggingface.co/spaces/"):
             async with self:
                 self.chat_histories[self.active_mode].append(
                     {
                         "role": "assistant",
-                        "content": "This mode does not have a valid Hugging Face Space API configured.",
+                        "content": "This mode does not have a valid Hugging Face Space configured.",
                         "image": None,
                         "source": "System Error",
                     }
                 )
             return
-        api_url = f"{api_url.replace('spaces/', 'spaces/api/')}/chat"
-        headers = {"Authorization": f"Bearer {os.environ.get('HUGGINGFACE_API_KEY')}"}
-        payload = {"inputs": question, "parameters": {"system_prompt": system_prompt}}
+        space_id = space_url.replace("https://huggingface.co/spaces/", "")
         try:
-            response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            response_data = response.json()
+            client = Client(space_id, hf_token=os.environ.get("HUGGINGFACE_API_KEY"))
+            result = client.predict(
+                question=question, system_prompt=system_prompt, api_name="/chat"
+            )
+            if isinstance(result, str):
+                response_data = json.loads(result)
+            else:
+                response_data = result
             content = response_data.get("generated_text", "No response text found.")
             image = response_data.get("image_url")
             source = response_data.get("source_url")
@@ -270,13 +274,13 @@ class AppState(rx.State):
                         "source": source,
                     }
                 )
-        except requests.exceptions.RequestException as e:
-            logging.exception(f"Error querying HF Space: {e}")
+        except Exception as e:
+            logging.exception(f"Error querying HF Space with gradio_client: {e}")
             async with self:
                 self.chat_histories[self.active_mode].append(
                     {
                         "role": "assistant",
-                        "content": f"Failed to query the Hugging Face Space. Error: {str(e)}",
+                        "content": f"The associated Hugging Face space is not available at the moment. Error: {e}",
                         "image": None,
                         "source": "API Error",
                     }
