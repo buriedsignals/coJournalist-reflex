@@ -1,14 +1,14 @@
 import reflex as rx
 import reflex_clerk_api as clerk
 import os
-from app.components.sidebar import scrape_sidebar
+from app.components.sidebar import sidebar
 from app.components.chat import chat_interface
 from app.state import AppState
 
 
 def protected_page() -> rx.Component:
     return rx.el.div(
-        rx.cond(AppState.show_scrape_sidebar, scrape_sidebar(), None),
+        rx.cond(AppState.show_sidebar, sidebar(), None),
         rx.el.main(chat_interface(), class_name="flex-1 h-screen overflow-hidden"),
         class_name="flex w-full min-h-screen bg-white font-['Inter']",
     )

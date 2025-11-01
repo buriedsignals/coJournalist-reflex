@@ -24,6 +24,7 @@ class ScrapeResult(TypedDict):
 
 class AppState(rx.State):
     active_mode: Mode = "SCRAPE"
+    active_scrape_sidebar_tab: str = "Scraper Setup"
     chat_histories: dict[Mode, list[Message]] = {
         "SCRAPE": [],
         "DATA": [],
@@ -69,8 +70,8 @@ class AppState(rx.State):
         return self.chat_histories[self.active_mode]
 
     @rx.var
-    def show_scrape_sidebar(self) -> bool:
-        return self.active_mode == "SCRAPE"
+    def show_sidebar(self) -> bool:
+        return self.active_mode in ["SCRAPE", "DATA", "INVESTIGATE"]
 
     @rx.event
     def set_active_mode(self, mode: str):
@@ -85,6 +86,10 @@ class AppState(rx.State):
                         "source": "System",
                     }
                 )
+
+    @rx.event
+    def set_scrape_sidebar_tab(self, tab: str):
+        self.active_scrape_sidebar_tab = tab
 
     @rx.event
     def toggle_about_modal(self):
