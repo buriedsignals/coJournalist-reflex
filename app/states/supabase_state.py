@@ -31,9 +31,10 @@ class SupabaseState(rx.State):
                 client.table("users")
                 .select("id")
                 .eq("clerk_id", clerk_state.user_id)
+                .maybe_single()
                 .execute()
             )
-            if not user_data.data:
+            if user_data is None:
                 client.table("users").insert(
                     {
                         "clerk_id": clerk_state.user_id,
@@ -63,9 +64,10 @@ class SupabaseState(rx.State):
                     .maybe_single()
                     .execute()
                 )
-                user_id = user_data.data.get("id") if user_data.data else None
+                user_id = user_data.get("id") if user_data else None
             except Exception as e:
                 logging.exception(f"Error fetching user from Supabase: {e}")
+                user_id = None
         if user_id:
             try:
                 client.table("scheduled_scrapers").insert(
@@ -75,7 +77,7 @@ class SupabaseState(rx.State):
                         "criteria": app_state.scrape_criteria,
                         "regularity": "weekly",
                         "day_number": 1,
-                        "monitoring": app_state.scrape_monitoring == "EMAIL",
+                        "monitoring": bool(app_state.scrape_monitoring),
                     }
                 ).execute()
             except Exception as e:
@@ -137,7 +139,7 @@ class SupabaseState(rx.State):
                 .maybe_single()
                 .execute()
             )
-            user_id = user_data.data.get("id") if user_data.data else None
+            user_id = user_data.get("id") if user_data else None
             if not user_id:
                 app_state.scheduled_scrapers = []
                 return

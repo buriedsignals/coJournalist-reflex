@@ -91,6 +91,9 @@ User manually selects mode via UI buttons - no AI routing.
 - [x] Set default 'regularity' (weekly) and 'day_number' (1) values
 - [x] Remove schedule field from UI and state
 - [x] Update Active Jobs display to show name (URL) and criteria
+- [x] Fix .maybe_single().execute() None handling in all Supabase queries
+- [x] Add None checks before accessing .data attribute to prevent AttributeError
+- [x] Update handle_scrape(), create_user_on_login(), and fetch_scrapers() with safe None patterns
 
 ---
 
@@ -177,22 +180,32 @@ JSON structure:
 **Status**: All backend errors resolved. App runs without crashes. Ready for Space deployment when HF Spaces are configured with proper `/chat` API endpoints.
 
 ## Supabase Query Fix Summary ✅
-**Problem**: PGRST116 error - "Cannot coerce the result to a single JSON object" when querying users table
+**Problem 1**: PGRST116 error - "Cannot coerce the result to a single JSON object" when querying users table
 - `.single().execute()` throws exception when 0 rows returned
 - Caused crashes in create_user_on_login(), handle_scrape(), and fetch_scrapers()
 
-**Solution**:
+**Solution 1**:
 - Replaced all `.single().execute()` calls with `.execute()`
 - Added safe list checking: `user_id = result.data[0].get("id") if result.data else None`
 - Empty queries now return `[]` instead of throwing exceptions
 - All methods handle missing users gracefully without crashes
 
-**Affected methods**:
-- ✅ `create_user_on_login()` - Checks if user exists before inserting
-- ✅ `handle_scrape()` - Handles missing user_id gracefully
-- ✅ `fetch_scrapers()` - Returns empty list when user not found
+**Problem 2**: AttributeError when using `.maybe_single().execute()`
+- `.maybe_single().execute()` returns `None` when no rows found (not an APIResponse object)
+- Code tried to access `user_data.data` when `user_data` was `None`
+- Caused error: `'NoneType' object has no attribute 'data'`
 
-**Status**: All Supabase errors resolved. App handles new users and missing data gracefully.
+**Solution 2**:
+- Added None checks before accessing `.data`: `if user_data and user_data.data:`
+- Safe extraction pattern: `user_id = user_data.data.get("id") if (user_data and user_data.data) else None`
+- Applied to all `.maybe_single().execute()` calls in the codebase
+
+**Affected methods**:
+- ✅ `create_user_on_login()` - Checks if user exists before inserting, handles None result
+- ✅ `handle_scrape()` - Handles missing user_id gracefully, no AttributeError
+- ✅ `fetch_scrapers()` - Returns empty list when user not found, handles None result
+
+**Status**: All Supabase errors resolved. App handles new users and missing data gracefully. Active Jobs tab accessible without crashes.
 
 ## Database Schema Alignment Fix ✅
 **Problem**: scheduled_scrapers insert failing due to schema mismatch
@@ -223,4 +236,4 @@ CREATE TABLE scheduled_scrapers (
 );
 ```
 
-**Status**: Database inserts now work correctly. Active Jobs tab displays saved scrapers with proper data.
+**Status**: ✅ Database inserts work correctly. ✅ Active Jobs tab displays saved scrapers with proper data. ✅ All Supabase queries handle None results safely without AttributeError.

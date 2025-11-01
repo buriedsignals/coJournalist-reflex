@@ -86,8 +86,6 @@ app = clerk.wrap_app(
     register_user_state=True,
     after_sign_in_url="/",
     after_sign_up_url="/",
-    dev_mode=True,
-    dev_mode_user="test@cojournalist.com",
 )
 clerk.add_sign_in_page(app)
 clerk.add_sign_up_page(app)
