@@ -22,7 +22,7 @@ class SupabaseState(rx.State):
     @rx.event
     async def create_user_on_login(self):
         clerk_user_state = await self.get_state(clerk.ClerkUser)
-        if not clerk_user_state.is_loaded or not clerk_user_state.user_id:
+        if not clerk_user_state.is_hydrated or not clerk_user_state.user_id:
             return
         client = self._get_client()
         try:
