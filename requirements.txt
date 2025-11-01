@@ -9,4 +9,3 @@ langchain-huggingface
 supabase
 gradio_client
 gradio-client
-langchain-core

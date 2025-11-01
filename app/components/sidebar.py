@@ -80,51 +80,10 @@ def _scraper_setup() -> rx.Component:
 
 
 def _active_jobs() -> rx.Component:
-    from app.states.supabase_state import SupabaseState
-
     return rx.el.div(
-        rx.el.div(
-            rx.el.h2("Active Jobs", class_name="text-2xl font-bold text-gray-800"),
-            rx.el.button(
-                rx.icon("refresh-cw", class_name="h-4 w-4"),
-                on_click=SupabaseState.fetch_scrapers,
-                class_name="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md",
-            ),
-            class_name="flex items-center justify-between mb-8",
-        ),
-        rx.cond(
-            AppState.scheduled_scrapers,
-            rx.el.div(
-                rx.foreach(
-                    AppState.scheduled_scrapers,
-                    lambda scraper: rx.el.div(
-                        rx.el.div(
-                            rx.el.p(
-                                scraper["url"],
-                                class_name="font-semibold text-gray-800 truncate",
-                            ),
-                            rx.el.p(
-                                f"Schedule: {scraper['schedule']}",
-                                class_name="text-sm text-gray-500",
-                            ),
-                            class_name="flex-1",
-                        ),
-                        rx.el.button(
-                            rx.icon("trash-2", class_name="h-4 w-4 text-red-500"),
-                            on_click=lambda: SupabaseState.delete_scraper(
-                                scraper["id"]
-                            ),
-                            class_name="p-2 hover:bg-red-50 rounded-md",
-                        ),
-                        class_name="flex items-center gap-4 p-4 border border-gray-200 rounded-lg bg-white",
-                    ),
-                ),
-                class_name="space-y-4",
-            ),
-            rx.el.p("No active jobs.", class_name="text-gray-500"),
-        ),
+        rx.el.h2("Active Jobs", class_name="text-2xl font-bold text-gray-800 mb-8"),
+        rx.el.p("No active jobs.", class_name="text-gray-500"),
         class_name="p-8",
-        on_mount=SupabaseState.fetch_scrapers,
     )
 
 

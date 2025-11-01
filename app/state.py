@@ -40,7 +40,6 @@ class AppState(rx.State):
     scrape_monitoring: str = "EMAIL"
     scraped_data: ScrapeResult | None = None
     show_about_modal: bool = False
-    scheduled_scrapers: list[dict] = []
     hf_space_urls: dict[Mode, str] = {
         "GRAPHICS": "https://huggingface.co/spaces/coJournalist/cojournalist-graphics",
         "INVESTIGATE": "https://huggingface.co/spaces/coJournalist/cojournalist-investigate",
@@ -142,11 +141,69 @@ class AppState(rx.State):
             async with self:
                 self.is_loading = False
 
-    @rx.event
+    @rx.event(background=True)
     async def handle_scrape(self):
-        from app.states.supabase_state import SupabaseState
+        import requests
+        import json
 
-        return SupabaseState.handle_scrape
+        async with self:
+            if not self.scrape_url:
+                return
+            self.is_loading = True
+            self.scraped_data = None
+            self.chat_histories[self.active_mode] = []
+        payload = {
+            "url": self.scrape_url,
+            "schedule": self.scrape_schedule,
+            "criteria": self.scrape_criteria,
+            "monitoring": self.scrape_monitoring,
+        }
+        webhook_url = "https://n8n-cojournalist.onrender.com/webhook/lipsum"
+        try:
+            response = requests.post(webhook_url, json=payload, timeout=15)
+            response.raise_for_status()
+            response_data = response.json()
+            scraped_data = {
+                "success": True,
+                "title": response_data.get("title", "Scrape Result"),
+                "preview": response_data.get(
+                    "preview", "The webhook returned a response."
+                ),
+                "url": self.scrape_url,
+                "error": None,
+            }
+            async with self:
+                self.scraped_data = cast(ScrapeResult, scraped_data)
+                self.chat_histories["SCRAPE"].append(
+                    {
+                        "role": "assistant",
+                        "content": self.scraped_data["title"],
+                        "image": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                        "source": self.scraped_data["url"],
+                    }
+                )
+                self.chat_histories["SCRAPE"].append(
+                    {
+                        "role": "assistant",
+                        "content": "Scrape successful. Please review the result. You can now use the chat to proceed.",
+                        "image": None,
+                        "source": None,
+                    }
+                )
+        except requests.exceptions.RequestException as e:
+            logging.exception(f"Error calling N8N webhook: {e}")
+            async with self:
+                self.chat_histories["SCRAPE"].append(
+                    {
+                        "role": "assistant",
+                        "content": f"Failed to trigger scrape workflow. Error: {str(e)}",
+                        "image": None,
+                        "source": "System Error",
+                    }
+                )
+        finally:
+            async with self:
+                self.is_loading = False
 
     async def _dummy_response(self, question: str, system_prompt: str):
         from langchain_huggingface import HuggingFaceEndpoint
@@ -156,7 +213,7 @@ class AppState(rx.State):
         repo_id = "mistralai/Mistral-7B-Instruct-v0.2"
         llm = HuggingFaceEndpoint(
             repo_id=repo_id,
-            max_new_tokens=128,
+            max_length=128,
             temperature=0.7,
             huggingfacehub_api_token=os.environ.get("HUGGINGFACE_API_KEY"),
         )
@@ -223,7 +280,7 @@ class AppState(rx.State):
                 self.chat_histories[self.active_mode].append(
                     {
                         "role": "assistant",
-                        "content": f"The Hugging Face space for this mode is currently unavailable. This might be due to setup or maintenance. Please try again later.",
+                        "content": f"The associated Hugging Face space is not available at the moment. Error: {e}",
                         "image": None,
                         "source": "API Error",
                     }

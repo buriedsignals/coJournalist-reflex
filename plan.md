@@ -78,11 +78,6 @@ User manually selects mode via UI buttons - no AI routing.
 - [x] Add user-friendly error messages when Spaces aren't configured
 - [x] Test all modes to ensure no backend crashes
 - [x] Verify system prompts are loaded correctly from JSON files
-- [x] Fix Supabase PGRST116 errors by replacing .single() with .execute()
-- [x] Update create_user_on_login() to handle empty query results
-- [x] Update handle_scrape() to handle missing user_id gracefully
-- [x] Update fetch_scrapers() to handle empty query results
-- [x] Test all Supabase queries to ensure no exceptions on empty results
 
 ---
 
@@ -167,21 +162,3 @@ JSON structure:
 - Graceful degradation when Spaces aren't configured
 
 **Status**: All backend errors resolved. App runs without crashes. Ready for Space deployment when HF Spaces are configured with proper `/chat` API endpoints.
-
-## Supabase Query Fix Summary ✅
-**Problem**: PGRST116 error - "Cannot coerce the result to a single JSON object" when querying users table
-- `.single().execute()` throws exception when 0 rows returned
-- Caused crashes in create_user_on_login(), handle_scrape(), and fetch_scrapers()
-
-**Solution**:
-- Replaced all `.single().execute()` calls with `.execute()`
-- Added safe list checking: `user_id = result.data[0].get("id") if result.data else None`
-- Empty queries now return `[]` instead of throwing exceptions
-- All methods handle missing users gracefully without crashes
-
-**Affected methods**:
-- ✅ `create_user_on_login()` - Checks if user exists before inserting
-- ✅ `handle_scrape()` - Handles missing user_id gracefully
-- ✅ `fetch_scrapers()` - Returns empty list when user not found
-
-**Status**: All Supabase errors resolved. App handles new users and missing data gracefully.

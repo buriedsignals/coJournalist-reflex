@@ -77,18 +77,14 @@ app = rx.App(
         ),
     ],
 )
-from app.states.supabase_state import SupabaseState
-
 app = clerk.wrap_app(
     app,
     publishable_key=os.environ.get("CLERK_PUBLISHABLE_KEY", ""),
     secret_key=os.environ.get("CLERK_SECRET_KEY", ""),
     register_user_state=True,
-    after_sign_in_url="/",
-    after_sign_up_url="/",
     dev_mode=True,
     dev_mode_user="test@cojournalist.com",
 )
 clerk.add_sign_in_page(app)
 clerk.add_sign_up_page(app)
-app.add_page(index, on_load=SupabaseState.create_user_on_login)
+app.add_page(index)
