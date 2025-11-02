@@ -1,6 +1,5 @@
 
 reflex==0.8.17
-reflex-clerk-api @ git+https://github.com/reflex-dev/reflex-clerk-api.git
 huggingface-hub
 beautifulsoup4
 requests
@@ -10,3 +9,4 @@ supabase
 gradio_client
 gradio-client
 langchain-core
+gotrue

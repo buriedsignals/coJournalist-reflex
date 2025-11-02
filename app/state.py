@@ -1,5 +1,4 @@
 import reflex as rx
-import reflex_clerk_api as clerk
 from typing import Literal, TypedDict, cast
 import os
 import logging
@@ -35,12 +34,16 @@ class AppState(rx.State):
     current_question: str = ""
     is_loading: bool = False
     scrape_url: str = ""
-    scrape_schedule: str = ""
+    scrape_regularity: str = "weekly"  # weekly or monthly
+    scrape_day_number: str = "1"  # 1-7 for weekly (Monday=1), 1-30 for monthly
+    scrape_time: str = "12:00"  # HH:MM format
     scrape_criteria: str = ""
     scrape_monitoring: str = "EMAIL"
     scraped_data: ScrapeResult | None = None
     show_about_modal: bool = False
     scheduled_scrapers: list[dict] = []
+    scrapers_loading: bool = False
+    scraper_to_delete: str | None = None
     hf_space_urls: dict[Mode, str] = {
         "GRAPHICS": "https://huggingface.co/spaces/coJournalist/cojournalist-graphics",
         "INVESTIGATE": "https://huggingface.co/spaces/coJournalist/cojournalist-investigate",
@@ -51,10 +54,9 @@ class AppState(rx.State):
 
     @rx.var
     async def is_paid_user(self) -> bool:
-        clerk_user = await self.get_state(clerk.ClerkUser)
-        if not clerk_user.email_address:
-            return False
-        return clerk_user.public_metadata.get("paid", False).to(bool)
+        from app.states.auth_state import AuthState
+        auth_state = await self.get_state(AuthState)
+        return auth_state.is_paid
 
     @rx.var
     def chat_disabled(self) -> bool:
@@ -95,6 +97,23 @@ class AppState(rx.State):
         self.active_scrape_sidebar_tab = tab
         if tab == "Active Jobs":
             return SupabaseState.fetch_scrapers
+
+    @rx.event
+    def switch_to_scraper_setup(self):
+        """Switch to Scraper Setup tab"""
+        self.active_scrape_sidebar_tab = "Scraper Setup"
+
+    @rx.event
+    def switch_to_active_jobs(self):
+        """Switch to Active Jobs tab and fetch scrapers"""
+        from app.states.supabase_state import SupabaseState
+        self.active_scrape_sidebar_tab = "Active Jobs"
+        return SupabaseState.fetch_scrapers
+
+    @rx.event
+    def switch_to_notifications(self):
+        """Switch to Notifications tab"""
+        self.active_scrape_sidebar_tab = "Notifications"
 
     @rx.event
     def toggle_about_modal(self):
